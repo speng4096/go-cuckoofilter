@@ -7,14 +7,34 @@ import (
 )
 
 const maxCuckooCount = 500
+const slotSize = 4
 
 var ErrFull = fmt.Errorf("移位次数超过限制:%d", maxCuckooCount)
 var ErrExist = fmt.Errorf("相同记录已存在")
 var ErrNotExist = fmt.Errorf("未找到记录")
 
+type Bucket [slotSize]byte
+
+func (b *Bucket) IndexByte(fp byte) (uint, bool) {
+	for i, v := range b {
+		if v == fp {
+			return uint(i), true
+		}
+	}
+	return 0, false
+}
+
+func (b *Bucket) IndexEmpty() (uint, bool) {
+	for i, v := range b {
+		if v == 0 {
+			return uint(i), true
+		}
+	}
+	return 0, false
+}
+
 type CuckooFilter struct {
 	table Table
-	count uint
 }
 
 func NewCuckooFilter(table Table) *CuckooFilter {
@@ -24,7 +44,7 @@ func NewCuckooFilter(table Table) *CuckooFilter {
 }
 
 func (c *CuckooFilter) Count() uint {
-	return c.count
+	return c.table.Count()
 }
 
 func (c *CuckooFilter) insert(i uint, fp byte) (bool, error) {
@@ -36,7 +56,7 @@ func (c *CuckooFilter) insert(i uint, fp byte) (bool, error) {
 		if err := c.table.SetSlot(i, slot, fp); err != nil {
 			return false, err
 		}
-		c.count++
+		c.table.IncrCount()
 		return true, nil
 	}
 	return false, nil
@@ -44,10 +64,7 @@ func (c *CuckooFilter) insert(i uint, fp byte) (bool, error) {
 
 func (c *CuckooFilter) info(data []byte) (uint, uint, byte, uint, error) {
 	fp := fingerprint(data)
-	num, err := c.table.BucketNum()
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
+	num := c.table.BucketNum()
 	i1 := hashRaw(data, num)
 	i2 := hashAlt(i1, fp, num)
 	return i1, i2, fp, num, nil
@@ -145,7 +162,7 @@ func (c *CuckooFilter) Delete(data []byte) error {
 			return err
 		}
 		// 指纹只存在一个位置, 不用再校验备用位置
-		c.count--
+		c.table.DecrCount()
 		return nil
 	}
 	// 校验备用位置
@@ -157,7 +174,7 @@ func (c *CuckooFilter) Delete(data []byte) error {
 		if err := c.table.SetSlot(i2, slot, 0); err != nil {
 			return err
 		}
-		c.count--
+		c.table.DecrCount()
 		return nil
 	}
 	// 注意, 表满时, data是Insert成功的, 不过它他踢走了另一个之前插入的元素
