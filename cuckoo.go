@@ -9,8 +9,8 @@ import (
 const maxCuckooCount = 500
 const slotSize = 4
 
-var ErrFull = fmt.Errorf("移位次数超过限制:%d", maxCuckooCount)
-var ErrExist = fmt.Errorf("相同记录已存在")
+var ErrFull = fmt.Errorf("移位次数过多")
+var ErrExist = fmt.Errorf("已存在相同记录")
 var ErrNotExist = fmt.Errorf("未找到记录")
 
 type Bucket [slotSize]byte
@@ -41,6 +41,10 @@ func NewCuckooFilter(table Table) *CuckooFilter {
 	return &CuckooFilter{
 		table: table,
 	}
+}
+
+func (c *CuckooFilter) Truncate() error {
+	return c.table.Truncate()
 }
 
 func (c *CuckooFilter) Count() uint {

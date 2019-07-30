@@ -91,7 +91,7 @@ func benchmarkCuckooFilter(table Table, capacity uint, b *testing.B) {
 		t := float64(time.Now().UnixNano()-start) / 1e9
 		tBlock := float64(time.Now().UnixNano()-blockStart) / 1e9
 		log.Printf(
-			"Benchmark InsertUnique block=%.2f%%-%.2f%%,capacity=%d, t=%.1f(%.1f), inserted=%d(%.2f/s), success=%d(%.2f%%), exist=%d(%.2f%%), err=%d(%.2f%%), load=%.2f%%",
+			"Benchmark InsertUnique block=%.2f%%-%.2f%%, capacity=%d, t=%.1f(%.1f), inserted=%d(%.2f/s), success=%d(%.2f%%), exist=%d(%.2f%%), err=%d(%.2f%%), load=%.2f%%",
 			100*float64(i)/blockCount, 100*float64(i+1)/blockCount, capacity, t, tBlock, insertedCount, float64(capacity/blockCount)/tBlock, successCount, float64(successCount)*100/float64(insertedCount),
 			existCount, float64(existCount)*100/float64(insertedCount), errCount, float64(errCount)*100/float64(insertedCount), float64(100*successCount)/float64(capacity),
 		)

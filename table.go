@@ -24,6 +24,8 @@ type Table interface {
 	IncrCount()
 	DecrCount()
 	Count() uint
+	// 清空数据
+	Truncate() error
 	io.Closer
 }
 
@@ -39,11 +41,18 @@ func NewMemTable(capacity uint) *MemTable {
 	if bucketNum == 0 {
 		bucketNum = 1
 	}
-	buckets := make([]Bucket, bucketNum)
-	for i := range buckets {
-		buckets[i] = Bucket{}
+	t := &MemTable{bucketNum: bucketNum, count: 0}
+	_ = t.Truncate()
+	return t
+}
+
+func (t *MemTable) Truncate() error {
+	t.buckets = make([]Bucket, t.bucketNum)
+	for i := range t.buckets {
+		t.buckets[i] = Bucket{}
 	}
-	return &MemTable{buckets, bucketNum, 0}
+	t.count = 0
+	return nil
 }
 
 func (t *MemTable) Bucket(index uint) (*Bucket, error) {
@@ -95,6 +104,7 @@ type MMAPTable struct {
 	bucketNum uint
 	count     uint
 	file      *os.File
+	capacity  uint
 }
 
 func NewMMAPTable(filename string, capacity uint) (*MMAPTable, error) {
@@ -105,7 +115,7 @@ func NewMMAPTable(filename string, capacity uint) (*MMAPTable, error) {
 
 	capacity = nextPow2(uint64(capacity))
 	if err := file.Truncate(int64(capacity)); err != nil {
-		return nil, errors.Wrap(err, "truncate file failed")
+		return nil, errors.Wrapf(err, "file.truncate(%d) failed", capacity)
 	}
 	m, err := mmap.Map(file, mmap.RDWR, 0)
 	if err != nil {
@@ -116,7 +126,21 @@ func NewMMAPTable(filename string, capacity uint) (*MMAPTable, error) {
 	if bucketNum == 0 {
 		bucketNum = 1
 	}
-	return &MMAPTable{m, bucketNum, 0, file}, nil
+	return &MMAPTable{m, bucketNum, 0, file, capacity}, nil
+}
+
+func (f *MMAPTable) Truncate() error {
+	if _, err := f.file.Seek(0, 0); err != nil {
+		return errors.Wrap(err, "file.seek failed(0)")
+	}
+	if err := f.file.Truncate(0); err != nil {
+		return errors.Wrap(err, "file.truncate(0) failed")
+	}
+	if err := f.file.Truncate(int64(f.capacity)); err != nil {
+		return errors.Wrapf(err, "file.truncate(%d) failed", f.capacity)
+	}
+	f.count = 0
+	return nil
 }
 
 func (f *MMAPTable) Bucket(index uint) (*Bucket, error) {
