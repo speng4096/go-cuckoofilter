@@ -103,7 +103,7 @@ ok, err := cf.Lookup(a)
 
 + 当`err!=nil`, 通常是底层存储出现了异常
 + 当`ok==true`时, 可能是误报: 存在已插入的元素b与a具有相同的哈希
-+ 当`ok==false`时, 可能是误报: InsertUnique(b)时, 由于哈希表已接近饱和, a给b挪出空位后, a无处安放, 被移出了希表(其实可增加Rollback流程,使得`ok==false`是确定的)
++ 当`ok==false`时, 可能是误报: InsertUnique(b)时, 由于哈希表已接近饱和, a给b挪出空位后, a无处安放, 被移出了哈希表(其实可增加Rollback流程,使得`ok==false`是确定的)
 
 ### 删除元素
 
